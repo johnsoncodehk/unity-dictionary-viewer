@@ -12,8 +12,9 @@ public static class SerializedPropertyParser
     {
         valField = null;
 
-        if (val == null)
+        if (!serializedObject.targetObject || val == null)
             return null;
+
 
         foreach (var field in fields)
         {
@@ -47,7 +48,7 @@ public static class SerializedPropertyParser
             {
                 EditorGUI.PropertyField(position, property, GUIContent.none, true);
 
-                if (serializedObject.ApplyModifiedProperties())
+                if (serializedObject.targetObject && serializedObject.ApplyModifiedProperties())
                     val = field.GetValue(serializedObject.targetObject);
             }
         }
