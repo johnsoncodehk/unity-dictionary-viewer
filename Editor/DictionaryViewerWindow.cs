@@ -17,7 +17,8 @@ public class DictionaryViewerWindow : EditorWindow
     }
 
     Vector2 m_ScrollPosition;
-    Dictionary<int, bool> m_Folds = new Dictionary<int, bool>();
+    Dictionary<int, bool> m_ComponentFolds = new Dictionary<int, bool>();
+    Dictionary<System.Reflection.FieldInfo, bool> m_FieldFolds = new Dictionary<System.Reflection.FieldInfo, bool>();
     Dictionary<KeyValuePair<Component, string>, ReorderableList> m_DictionaryLists = new Dictionary<KeyValuePair<Component, string>, ReorderableList>();
 
     void OnSelectionChange()
@@ -70,8 +71,8 @@ public class DictionaryViewerWindow : EditorWindow
     void DrawComponent(Component component)
     {
         int instanceID = component.GetInstanceID();
-        m_Folds[instanceID] = EditorGUILayout.InspectorTitlebar(GetFold(instanceID), component);
-        if (m_Folds[instanceID])
+        m_ComponentFolds[instanceID] = EditorGUILayout.InspectorTitlebar(GetComponentFold(instanceID), component);
+        if (m_ComponentFolds[instanceID])
         {
             var fields = component.GetType().GetFields();
 
@@ -80,6 +81,11 @@ public class DictionaryViewerWindow : EditorWindow
                 var dict = field.GetValue(component) as IDictionary;
 
                 if (dict == null)
+                    continue;
+
+                m_FieldFolds[field] = EditorGUILayout.Foldout(GetFieldFold(field), field.Name);
+
+                if (!m_FieldFolds[field])
                     continue;
 
                 var id = new KeyValuePair<Component, string>(component, field.Name);
@@ -120,7 +126,7 @@ public class DictionaryViewerWindow : EditorWindow
                     float keyHeight = SerializedPropertyParser.GetPropertyHeight(key);
                     float valHeight = SerializedPropertyParser.GetPropertyHeight(val);
 
-                    return Mathf.Max(keyHeight, valHeight) + 2;
+                    return Mathf.Max(keyHeight, valHeight) + 8;
                 }
                 void DrawItem(Rect rect, int index, bool selected, bool focused)
                 {
@@ -128,9 +134,12 @@ public class DictionaryViewerWindow : EditorWindow
                     object key = kvp.Key;
                     object val = kvp.Value;
 
+                    float keyWidth = rect.width * 0.45f - 40;
+                    float valWidth = rect.width - keyWidth;
+
                     EditorGUI.BeginChangeCheck();
-                    SerializedPropertyParser.PropertyField(new Rect(rect.x, rect.y, rect.width * 0.5f, rect.height), ref key);
-                    SerializedPropertyParser.PropertyField(new Rect(rect.x + rect.width * 0.5f, rect.y, rect.width * 0.5f, rect.height), ref val);
+                    SerializedPropertyParser.PropertyField(new Rect(rect.x, rect.y, keyWidth - 16, rect.height), ref key);
+                    SerializedPropertyParser.PropertyField(new Rect(rect.x + keyWidth, rect.y, valWidth - 8, rect.height), ref val);
                     if (EditorGUI.EndChangeCheck())
                     {
                         rList.list[index] = new KeyValuePair<object, object>(key, val);
@@ -187,12 +196,19 @@ public class DictionaryViewerWindow : EditorWindow
         }
     }
 
-    bool GetFold(int instanceID)
+    bool GetComponentFold(int instanceID)
     {
-        if (!m_Folds.ContainsKey(instanceID))
+        if (!m_ComponentFolds.ContainsKey(instanceID))
             return true;
 
-        return m_Folds[instanceID];
+        return m_ComponentFolds[instanceID];
+    }
+    bool GetFieldFold(System.Reflection.FieldInfo field)
+    {
+        if (!m_FieldFolds.ContainsKey(field))
+            return false;
+
+        return m_FieldFolds[field];
     }
 
 }
