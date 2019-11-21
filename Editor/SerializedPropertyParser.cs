@@ -1,37 +1,53 @@
 ﻿using UnityEngine;
 using UnityEditor;
+using System.Collections.Generic;
 using System.Reflection;
 
 public static class SerializedPropertyParser
 {
 
-    static SerializedObject serializedObject = new SerializedObject(new SerializedPropertyTypes());
     static FieldInfo[] fields = typeof(SerializedPropertyTypes).GetFields();
+    static Dictionary<System.Type, FieldInfo> fieldMatchingCache = new Dictionary<System.Type, FieldInfo>();
 
-    public static SerializedProperty From(object val, out FieldInfo valField)
+    public static SerializedProperty From(object val, out SerializedObject serializedObject, out FieldInfo field)
     {
-        valField = null;
+        field = null;
+
+        serializedObject = new SerializedObject(new SerializedPropertyTypes());
 
         if (!serializedObject.targetObject || val == null)
             return null;
 
-
-        foreach (var field in fields)
+        field = FindMatchingField(val.GetType());
+        if (field != null)
         {
-            if (val.GetType() == field.FieldType || val.GetType().IsSubclassOf(field.FieldType))
-            {
-                valField = field;
-
-                field.SetValue(serializedObject.targetObject, val);
-                serializedObject.Update();
-                return serializedObject.FindProperty(field.Name);
-            }
+            field.SetValue(serializedObject.targetObject, val);
+            serializedObject.Update();
+            return serializedObject.FindProperty(field.Name);
         }
 
         return null;
     }
 
-    public static void PropertyField(Rect position, ref object val)
+    static FieldInfo FindMatchingField(System.Type valType)
+    {
+        if (fieldMatchingCache.ContainsKey(valType))
+            return fieldMatchingCache[valType];
+
+        foreach (var field in fields)
+        {
+            if (valType == field.FieldType || valType.IsSubclassOf(field.FieldType))
+            {
+                fieldMatchingCache[valType] = field;
+                return field;
+            }
+        }
+
+        fieldMatchingCache[valType] = null;
+        return null;
+    }
+
+    public static void PropertyField(SerializedObject serializedObject, SerializedProperty property, FieldInfo field, Rect position, ref object val)
     {
         if (val == null)
         {
@@ -39,7 +55,6 @@ public static class SerializedPropertyParser
         }
         else
         {
-            var property = From(val, out var field);
             if (property == null)
             {
                 EditorGUI.LabelField(position, val.ToString());
@@ -54,10 +69,9 @@ public static class SerializedPropertyParser
         }
     }
 
-    public static float GetPropertyHeight(object val)
+    public static float GetPropertyHeight(SerializedProperty property)
     {
         var height = EditorGUI.GetPropertyHeight(SerializedPropertyType.Generic, null);
-        var property = SerializedPropertyParser.From(val, out var field);
 
         if (property != null)
             height = Mathf.Max(height, EditorGUI.GetPropertyHeight(property, GUIContent.none, true));
