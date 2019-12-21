@@ -173,22 +173,11 @@ public class DictionaryViewerWindow : EditorWindow
         }
         void AddItem(ReorderableList list)
         {
-            Type keyType = null;
-            Type valType = null;
-            foreach (var kvpObj in list.list)
-            {
-                var kvp = (KeyValuePair<object, object>)kvpObj;
+            Type[] arguments = dict.GetType().GetGenericArguments();
+            Type keyType = arguments[0];
+            Type valueType = arguments[1];
 
-                if (keyType == null && kvp.Key != null)
-                    keyType = kvp.Key.GetType();
-
-                if (valType == null && kvp.Value != null)
-                    valType = kvp.Value.GetType();
-
-                if (keyType != null && valType != null)
-                    break;
-            }
-            dict.Add(GetDefault(keyType), GetDefault(valType));
+            dict.Add(GetDefault(keyType), GetDefault(valueType));
 
             object GetDefault(Type type)
             {
